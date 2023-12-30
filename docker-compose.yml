@@ -2,24 +2,26 @@ version: '3.8'
 
 services:
   backend:
-    image: python:3.11
     volumes:
-      - ./src/backend:/app
+      - ./backend:/app
     working_dir: /app
-    command: python app.py
+    command: python backend/app.py
     ports:
       - "5000:5000"
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
+    depends_on:
+      - db
 
   frontend:
-    image: python:3.11
     volumes:
-      - ./src/frontend:/app
+      - ./frontend:/app
     working_dir: /app
-    command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+    command: streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
     ports:
       - "8501:8501"
+    depends_on:
+      - backend
 
   db:
     image: postgres:13
