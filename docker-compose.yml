@@ -2,10 +2,13 @@ version: '3.8'
 
 services:
   backend:
-    volumes:
-      - ./backend:/app
+    # volumes:
+    #   - ./backend:/app
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     working_dir: /app
-    command: python backend/app.py
+    command: python snekdash_backend/app.py
     ports:
       - "5000:5000"
     environment:
@@ -14,10 +17,13 @@ services:
       - db
 
   frontend:
-    volumes:
-      - ./frontend:/app
+    # volumes:
+    #   - ./frontend:/app
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     working_dir: /app
-    command: streamlit run frontend/app.py --server.port 8501 --server.address 0.0.0.0
+    command: streamlit run snekdash_frontend/app.py --server.port 8501 --server.address 0.0.0.0
     ports:
       - "8501:8501"
     depends_on:
