@@ -13,21 +13,24 @@ from sqlalchemy import (
     String,
     create_engine,
 )
-from sqlalchemy.ext.declarative import (
-    declarative_base,
-)
 from sqlalchemy.orm import (
+    DeclarativeBase,
     sessionmaker,
 )
 
 # Database setup
-DATABASE_URL = "sqlite:///./test.db"
-Base = declarative_base()
-engine = create_engine(DATABASE_URL)
+DATABASE_URL = "postgresql+psycopg2://user:password@db:5432/mydatabase"
+
+
+engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-class DataModel(Base):  # type: ignore
+class Base(DeclarativeBase):
+    """Base class for SQLAlchemy models."""
+
+
+class DataModel(Base):
     """Data model for storing data from external API."""
 
     __tablename__ = "data"
@@ -63,6 +66,7 @@ async def background_fetch():
         await asyncio.sleep(60)
 
 
+# TODO on_event is deprecated, find a better way to start the background task
 @app.on_event("startup")
 async def startup_event():
     """Start the background task when the app starts.""" ""
