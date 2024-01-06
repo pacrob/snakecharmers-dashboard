@@ -1,3 +1,5 @@
+import json
+
 import requests
 import streamlit as st
 
@@ -7,8 +9,10 @@ st.title("Data Viewer")
 def fetch_data_from_backend():
     """Fetch data from the backend and returns it as a JSON object."""
     try:
-        response = requests.get("http://backend:5000/data")
-        return response.json()
+        response = requests.get("http://backend:5000/newsfragments")
+        print(response)
+        return json.dumps({"response": response})
+        # return response.json()
     except requests.RequestException as e:
         return str(e)
 

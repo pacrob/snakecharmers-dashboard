@@ -24,6 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "ipython",
     "pre-commit>=2.15.0",
 ]
 test = [
