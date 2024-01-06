@@ -99,7 +99,8 @@ async def lifespan(app: FastAPI):
 
 
 # FastAPI app
-app = FastAPI(lifespan=lifespan)
+# app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 
 @app.get("/newsfragments")
