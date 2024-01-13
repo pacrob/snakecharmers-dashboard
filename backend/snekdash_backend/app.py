@@ -65,7 +65,8 @@ async def fetch_newsfragment_data():
 
         newsfragment_data = []
 
-        async for lib in libs_to_check:
+        # async for lib in libs_to_check:
+        for lib in libs_to_check:
             url = f"https://api.github.com/repos/ethereum/{lib}/newsfragments"
             headers = {
                 "Accept": "application/vnd.github.v3+json",
