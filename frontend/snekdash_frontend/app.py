@@ -1,5 +1,3 @@
-import json
-
 import requests
 import streamlit as st
 
@@ -11,8 +9,7 @@ def fetch_root_data():
     try:
         response = requests.get("http://backend:8000/")
         print(response)
-        return json.dumps({"response": response})
-        # return response.json()
+        return response.json()
     except requests.RequestException as e:
         return str(e)
 
@@ -31,8 +28,8 @@ def fetch_newsfragment_data():
     try:
         response = requests.get("http://backend:8000/newsfragments")
         print(response)
-        return json.dumps({"response": response})
-        # return response.json()
+        # return json.dumps({"response": response})
+        return response.json()
     except requests.RequestException as e:
         return str(e)
 
