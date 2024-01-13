@@ -103,6 +103,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI()
 
 
+@app.get("/")
+async def root():
+    """Root endpoint."""
+    return {"message": "Hello World"}
+
+
 @app.get("/newsfragments")
 async def get_newsfragments():
     """Get the latest data from the database."""

@@ -7,10 +7,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    working_dir: /app
-    command: python snekdash_backend/app.py
+    working_dir: /app/snekdash_backend
+    command: uvicorn app:app --reload
     ports:
-      - "5000:5000"
+      - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/mydatabase
       - GITHUB_API_TOKEN=${GITHUB_API_TOKEN}

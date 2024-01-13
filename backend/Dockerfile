@@ -21,4 +21,4 @@ RUN groupadd -r usergroup && useradd -r -g usergroup meow
 USER meow
 
 # Command to run the app
-# CMD ["python", "app.py"]
+# CMD ["python", "snekdash_backend/app.py"]
