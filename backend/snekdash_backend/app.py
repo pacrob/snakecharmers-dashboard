@@ -24,6 +24,7 @@ from sqlalchemy.orm import (
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 GITHUB_API_TOKEN = os.environ.get("GITHUB_API_TOKEN")
+GITHUB_CLASSIC_API_TOKEN = os.environ.get("GITHUB_CLASSIC_API_TOKEN")
 
 
 # Database setup
@@ -48,7 +49,7 @@ Base.metadata.create_all(bind=engine)
 
 
 libs_to_check = [
-    "web3",
+    "web3.py",
     "eth-account",
     "eth-abi",
     # "eth-utils",
@@ -67,10 +68,10 @@ async def fetch_newsfragment_data():
 
         # async for lib in libs_to_check:
         for lib in libs_to_check:
-            url = f"https://api.github.com/repos/ethereum/{lib}/newsfragments"
+            url = f"https://api.github.com/repos/ethereum/{lib}/contents/newsfragments"
             headers = {
-                "Accept": "application/vnd.github.v3+json",
-                "Authorization": f"Bearer {GITHUB_API_TOKEN}",
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {GITHUB_CLASSIC_API_TOKEN}",
                 "X-GitHub-Api-Version": "2022-11-28",
             }
             response = await client.get(url, headers=headers)

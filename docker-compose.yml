@@ -14,6 +14,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg2://user:password@db:5432/mydatabase
       - GITHUB_API_TOKEN=${GITHUB_API_TOKEN}
+      - GITHUB_CLASSIC_API_TOKEN=${GITHUB_CLASSIC_API_TOKEN}
     depends_on:
       - db
 
