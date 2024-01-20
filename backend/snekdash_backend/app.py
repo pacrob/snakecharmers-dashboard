@@ -79,7 +79,7 @@ async def fetch_contents_of_newsfragments_folder(lib: str, client: httpx.AsyncCl
     return response.json()
 
 
-async def fetch_created_for_a_newsfragment_file(
+async def fetch_commit_date_for_a_newsfragment_file(
     lib: str, filename: str, client: httpx.AsyncClient
 ):
     """Fetch the date of creation for a single newsfragment file."""
@@ -91,27 +91,38 @@ async def fetch_created_for_a_newsfragment_file(
     return response.json()
 
 
-async def fetch_newsfragment_data_for_single_lib(lib: str) -> list[str]:
+async def fetch_newsfragment_data_for_single_lib(lib: str) -> dict[str, str]:
     """Fetch newsfragment data for a single library from the github api."""
     async with httpx.AsyncClient() as client:
-        response = await fetch_contents_of_newsfragments_folder(lib, client)
+        response_list = await fetch_contents_of_newsfragments_folder(lib, client)
 
         # parse response down to just the newsfragment filenames
         newsfragment_filenames = [
             file["name"]
-            for file in response
+            for file in response_list
             if file["name"] not in NEWSFRAGMENT_FILES_TO_IGNORE
         ]
 
-        return newsfragment_filenames
+        # fetch the commit date for each newsfragment file
+        file_commit_dates = {}
+        for filename in newsfragment_filenames:
+            response = await fetch_commit_date_for_a_newsfragment_file(
+                lib, filename, client
+            )
+            # ...["committer"]["date"] parses the date of the most recent commit to
+            # the file. If the date of first authorship is desired, use
+            # ...["author"]["date"] instead.
+            file_commit_dates[filename] = response[0]["commit"]["committer"]["date"]
+
+        return file_commit_dates
 
 
 async def fetch_all_newsfragment_data():
     """Fetch data from external API and return it as a JSON object."""
     lib_info = {}
     for lib in LIBS_TO_CHECK:
-        newsfragment_filenames = await fetch_newsfragment_data_for_single_lib(lib)
-        lib_info[lib] = newsfragment_filenames
+        newsfragment_commit_dates = await fetch_newsfragment_data_for_single_lib(lib)
+        lib_info[lib] = newsfragment_commit_dates
 
     return lib_info
 
