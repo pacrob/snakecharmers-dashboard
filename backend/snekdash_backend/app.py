@@ -27,6 +27,30 @@ GITHUB_API_TOKEN = os.environ.get("GITHUB_API_TOKEN")
 GITHUB_CLASSIC_API_TOKEN = os.environ.get("GITHUB_CLASSIC_API_TOKEN")
 
 
+LIBS_TO_CHECK = [
+    "web3.py",
+    "eth-account",
+    "eth-abi",
+    # "eth-utils",
+    # "eth-keys",
+    # "eth-typing",
+    # "eth-hash",
+]
+
+NEWSFRAGMENT_FILES_TO_IGNORE = [
+    "README.md",
+    "README.rst",
+    "README",
+    "validate_files.py",
+]
+
+GITHUB_API_HEADERS = {
+    "Accept": "application/vnd.github+json",
+    "Authorization": f"Bearer {GITHUB_CLASSIC_API_TOKEN}",
+    "X-GitHub-Api-Version": "2022-11-28",
+}
+
+
 # Database setup
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -48,43 +72,55 @@ class DataModel(Base):
 Base.metadata.create_all(bind=engine)
 
 
-libs_to_check = [
-    "web3.py",
-    "eth-account",
-    "eth-abi",
-    # "eth-utils",
-    # "eth-keys",
-    # "eth-typing",
-    # "eth-hash",
-]
+async def fetch_contents_of_newsfragments_folder(lib: str, client: httpx.AsyncClient):
+    """Fetch contents of the newsfragments folder of a given lib."""
+    url = f"https://api.github.com/repos/ethereum/{lib}/contents/newsfragments"
+    response = await client.get(url, headers=GITHUB_API_HEADERS)
+    return response.json()
 
 
-async def fetch_newsfragment_data():
-    """Fetch data from external API and return it as a JSON object."""
+async def fetch_created_for_a_newsfragment_file(
+    lib: str, filename: str, client: httpx.AsyncClient
+):
+    """Fetch the date of creation for a single newsfragment file."""
+    url = (
+        f"https://api.github.com/repos/ethereum/{lib}/commits?path=newsfragments"
+        f"/{filename}"
+    )
+    response = await client.get(url, headers=GITHUB_API_HEADERS)
+    return response.json()
+
+
+async def fetch_newsfragment_data_for_single_lib(lib: str) -> list[str]:
+    """Fetch newsfragment data for a single library from the github api."""
     async with httpx.AsyncClient() as client:
-        # Replace with your actual API endpoint
+        response = await fetch_contents_of_newsfragments_folder(lib, client)
 
-        newsfragment_data = []
+        # parse response down to just the newsfragment filenames
+        newsfragment_filenames = [
+            file["name"]
+            for file in response
+            if file["name"] not in NEWSFRAGMENT_FILES_TO_IGNORE
+        ]
 
-        # async for lib in libs_to_check:
-        for lib in libs_to_check:
-            url = f"https://api.github.com/repos/ethereum/{lib}/contents/newsfragments"
-            headers = {
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {GITHUB_CLASSIC_API_TOKEN}",
-                "X-GitHub-Api-Version": "2022-11-28",
-            }
-            response = await client.get(url, headers=headers)
-            newsfragment_data.append(response.json())
+        return newsfragment_filenames
 
-        return newsfragment_data
+
+async def fetch_all_newsfragment_data():
+    """Fetch data from external API and return it as a JSON object."""
+    lib_info = {}
+    for lib in LIBS_TO_CHECK:
+        newsfragment_filenames = await fetch_newsfragment_data_for_single_lib(lib)
+        lib_info[lib] = newsfragment_filenames
+
+    return lib_info
 
 
 # Background task to fetch data every minute
 async def background_fetch_newsfragments():
     """Fetch data from external API every minute and store it in the database."""
     while True:
-        data = await fetch_newsfragment_data()
+        data = await fetch_all_newsfragment_data()
         print(data)
         # db = SessionLocal()
         # db_data = DataModel(data=str(data))
@@ -117,7 +153,7 @@ async def get_newsfragments():
     # db = SessionLocal()
     # latest_data = db.query(DataModel).order_by(DataModel.id.desc()).first()
     # db.close()
-    latest_data = await fetch_newsfragment_data()
+    latest_data = await fetch_all_newsfragment_data()
     if latest_data:
         return {"data": latest_data}
     raise HTTPException(status_code=404, detail="Data not found")
