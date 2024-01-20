@@ -9,7 +9,6 @@ from fastapi import (
     FastAPI,
     HTTPException,
 )
-import httpx
 from sqlalchemy import (
     Column,
     DateTime,
@@ -22,34 +21,12 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
+from newsfragments import (
+    background_fetch_newsfragments,
+    fetch_all_newsfragment_data_from_github_api,
+)
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
-GITHUB_API_TOKEN = os.environ.get("GITHUB_API_TOKEN")
-GITHUB_CLASSIC_API_TOKEN = os.environ.get("GITHUB_CLASSIC_API_TOKEN")
-
-
-LIBS_TO_CHECK = [
-    "web3.py",
-    "eth-account",
-    "eth-abi",
-    # "eth-utils",
-    # "eth-keys",
-    # "eth-typing",
-    # "eth-hash",
-]
-
-NEWSFRAGMENT_FILES_TO_IGNORE = [
-    "README.md",
-    "README.rst",
-    "README",
-    "validate_files.py",
-]
-
-GITHUB_API_HEADERS = {
-    "Accept": "application/vnd.github+json",
-    "Authorization": f"Bearer {GITHUB_CLASSIC_API_TOKEN}",
-    "X-GitHub-Api-Version": "2022-11-28",
-}
-
 
 # Database setup
 engine = create_engine(DATABASE_URL, echo=True)
@@ -63,82 +40,13 @@ class Base(DeclarativeBase):
 class DataModel(Base):
     """Data model for storing data from external API."""
 
-    __tablename__ = "data"
+    __tablename__ = "basic_data"
     id = Column(Integer, primary_key=True, index=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     data = Column(String)
 
 
 Base.metadata.create_all(bind=engine)
-
-
-async def fetch_contents_of_newsfragments_folder(lib: str, client: httpx.AsyncClient):
-    """Fetch contents of the newsfragments folder of a given lib."""
-    url = f"https://api.github.com/repos/ethereum/{lib}/contents/newsfragments"
-    response = await client.get(url, headers=GITHUB_API_HEADERS)
-    return response.json()
-
-
-async def fetch_commit_date_for_a_newsfragment_file(
-    lib: str, filename: str, client: httpx.AsyncClient
-):
-    """Fetch the date of creation for a single newsfragment file."""
-    url = (
-        f"https://api.github.com/repos/ethereum/{lib}/commits?path=newsfragments"
-        f"/{filename}"
-    )
-    response = await client.get(url, headers=GITHUB_API_HEADERS)
-    return response.json()
-
-
-async def fetch_newsfragment_data_for_single_lib(lib: str) -> dict[str, str]:
-    """Fetch newsfragment data for a single library from the github api."""
-    async with httpx.AsyncClient() as client:
-        response_list = await fetch_contents_of_newsfragments_folder(lib, client)
-
-        # parse response down to just the newsfragment filenames
-        newsfragment_filenames = [
-            file["name"]
-            for file in response_list
-            if file["name"] not in NEWSFRAGMENT_FILES_TO_IGNORE
-        ]
-
-        # fetch the commit date for each newsfragment file
-        file_commit_dates = {}
-        for filename in newsfragment_filenames:
-            response = await fetch_commit_date_for_a_newsfragment_file(
-                lib, filename, client
-            )
-            # ...["committer"]["date"] parses the date of the most recent commit to
-            # the file. If the date of first authorship is desired, use
-            # ...["author"]["date"] instead.
-            file_commit_dates[filename] = response[0]["commit"]["committer"]["date"]
-
-        return file_commit_dates
-
-
-async def fetch_all_newsfragment_data():
-    """Fetch data from external API and return it as a JSON object."""
-    lib_info = {}
-    for lib in LIBS_TO_CHECK:
-        newsfragment_commit_dates = await fetch_newsfragment_data_for_single_lib(lib)
-        lib_info[lib] = newsfragment_commit_dates
-
-    return lib_info
-
-
-# Background task to fetch data every minute
-async def background_fetch_newsfragments():
-    """Fetch data from external API every minute and store it in the database."""
-    while True:
-        data = await fetch_all_newsfragment_data()
-        print(data)
-        # db = SessionLocal()
-        # db_data = DataModel(data=str(data))
-        # db.add(db_data)
-        # db.commit()
-        # db.close()
-        await asyncio.sleep(30)
 
 
 @asynccontextmanager  # type: ignore
@@ -164,30 +72,10 @@ async def get_newsfragments():
     # db = SessionLocal()
     # latest_data = db.query(DataModel).order_by(DataModel.id.desc()).first()
     # db.close()
-    latest_data = await fetch_all_newsfragment_data()
+    latest_data = await fetch_all_newsfragment_data_from_github_api()
     if latest_data:
         return {"data": latest_data}
     raise HTTPException(status_code=404, detail="Data not found")
-
-
-# async def fetch_data():
-#     """Fetch data from external API and return it as a JSON object."""
-#     async with httpx.AsyncClient() as client:
-#         # Replace with your actual API endpoint
-#         response = await client.get("https://api.external.com/data")
-#         return response.json()
-
-# # Background task to fetch data every minute
-# async def background_fetch():
-#     """Fetch data from external API every minute and store it in the database."""
-#     while True:
-#         data = await fetch_data()
-#         db = SessionLocal()
-#         db_data = DataModel(data=str(data))
-#         db.add(db_data)
-#         db.commit()
-#         db.close()
-#         await asyncio.sleep(60)
 
 
 # # TODO on_event is deprecated, find a better way to start the background task
@@ -207,6 +95,17 @@ async def get_data():
     if latest_data:
         return {"data": latest_data.data}
     raise HTTPException(status_code=404, detail="Data not found")
+
+
+@app.post("/data")
+async def post_data(data: str):
+    """Post data to the database."""
+    db = SessionLocal()
+    db_data = DataModel(data=data)
+    db.add(db_data)
+    db.commit()
+    db.close()
+    return {"data": data}
 
 
 # Run with: uvicorn backend_app:app --reload
