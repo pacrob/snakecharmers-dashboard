@@ -1,5 +1,4 @@
 import asyncio
-import asyncio
 import os
 
 import httpx
@@ -26,6 +25,7 @@ NEWSFRAGMENT_FILES_TO_IGNORE = [
     "README",
     "validate_files.py",
 ]
+
 
 async def fetch_contents_of_newsfragments_folder(lib: str, client: httpx.AsyncClient):
     """Fetch contents of the newsfragments folder of a given lib."""

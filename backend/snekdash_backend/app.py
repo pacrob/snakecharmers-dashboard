@@ -9,6 +9,10 @@ from fastapi import (
     FastAPI,
     HTTPException,
 )
+from newsfragments import (
+    background_fetch_newsfragments,
+    fetch_all_newsfragment_data_from_github_api,
+)
 from sqlalchemy import (
     Column,
     DateTime,
@@ -19,11 +23,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import (
     DeclarativeBase,
     sessionmaker,
-)
-
-from newsfragments import (
-    background_fetch_newsfragments,
-    fetch_all_newsfragment_data_from_github_api,
 )
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -100,6 +99,7 @@ async def get_data():
 @app.post("/data")
 async def post_data(data: str):
     """Post data to the database."""
+    print(f"{data=}")
     db = SessionLocal()
     db_data = DataModel(data=data)
     db.add(db_data)
